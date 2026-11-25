@@ -1,0 +1,81 @@
+import './simulator/bootstrap'
+import './index.css'
+
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import { createDialog } from './utils/dialogs'
+import { initSocket } from './socket'
+import router from './router'
+import translationPlugin from './translation'
+import App from './App.vue'
+import { isSimulatorMode } from './simulator/mode'
+import { simulatorRequest } from './simulator/mockBackend'
+
+import {
+  FrappeUI,
+  Button,
+  TextInput,
+  FormControl,
+  ErrorMessage,
+  Dialog,
+  Alert,
+  Badge,
+  setConfig,
+  frappeRequest,
+} from 'frappe-ui'
+
+import { telemetryPlugin } from '@framework/ui/telemetry'
+// injects the lucide SVG sprite into the DOM so the IconPicker and lucide Icons
+// (used for view icons) can render from it
+import { spritePlugin } from 'frappe-ui/experimental'
+
+let globalComponents = {
+  Button,
+  TextInput,
+  FormControl,
+  ErrorMessage,
+  Dialog,
+  Alert,
+  Badge,
+}
+
+// create a pinia instance
+let pinia = createPinia()
+
+let app = createApp(App)
+
+const simulator = isSimulatorMode()
+setConfig('resourceFetcher', simulator ? simulatorRequest : frappeRequest)
+app.use(FrappeUI)
+app.use(spritePlugin)
+app.use(pinia)
+app.use(router)
+app.use(translationPlugin)
+for (let key in globalComponents) {
+  app.component(key, globalComponents[key])
+}
+app.use(telemetryPlugin, { app_name: 'crm' })
+
+app.config.globalProperties.$dialog = createDialog
+
+let socket
+if (import.meta.env.DEV && !simulator) {
+  frappeRequest({ url: '/api/method/crm.www.crm.get_context_for_dev' }).then(
+    (values) => {
+      for (let key in values) {
+        window[key] = values[key]
+      }
+      socket = initSocket()
+      app.config.globalProperties.$socket = socket
+      app.mount('#app')
+    },
+  )
+} else {
+  socket = initSocket()
+  app.config.globalProperties.$socket = socket
+  app.mount('#app')
+}
+
+if (import.meta.env.DEV) {
+  window.$dialog = createDialog
+}

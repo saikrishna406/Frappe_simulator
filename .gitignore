@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-simulator/
+dist-ssr/
+coverage/
+.DS_Store
+*.local
+components.d.ts
+auto-imports.d.ts
